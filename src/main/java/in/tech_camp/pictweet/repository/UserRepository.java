@@ -32,6 +32,10 @@ public interface UserRepository {
   })
   UserEntity findById(Integer id);
 
+  // 循環参照の回避のために、アソシエーション無しのメソッドも定義
+  @Select("SELECT id, nickname FROM users WHERE id = #{id}")
+  UserEntity findUserById(Integer id);
+
   @Select("SELECT * FROM users")
   List<UserEntity> findAll();
 }

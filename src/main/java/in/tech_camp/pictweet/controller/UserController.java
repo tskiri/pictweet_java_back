@@ -74,13 +74,14 @@ public class UserController {
     }
   }
 
-  @GetMapping("/users/{userId}")
-  public String showMypage(@PathVariable("userId") Integer userId, Model model) {
+  @GetMapping("/{userId}")
+  public ResponseEntity<UserEntity> showMypage(@PathVariable("userId") Integer userId) {
     UserEntity user = userRepository.findById(userId);
-    List<TweetEntity> tweets = user.getTweets();
 
-    model.addAttribute("nickname", user.getNickname());
-    model.addAttribute("tweets", tweets);
-    return "users/mypage";
+    if (user == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    return ResponseEntity.ok().body(user);
   }
 }

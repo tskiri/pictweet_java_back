@@ -38,26 +38,13 @@ public class TweetController {
   private final TweetRepository tweetRepository;
 
   private final UserRepository userRepository;
-  
-  @PostMapping("/tweets")
-  public String createTweet(@ModelAttribute("tweetForm") @Validated(ValidationOrder.class) TweetForm tweetForm,
-                            BindingResult result, 
-                            @AuthenticationPrincipal CustomUserDetail currentUser,
-                            Model model) {
 
-    if (result.hasErrors()) {
-      List<String> errorMessages = result.getAllErrors().stream()
-              .map(DefaultMessageSourceResolvable::getDefaultMessage)
-              .collect(Collectors.toList());
-      model.addAttribute("errorMessages", errorMessages);
-      model.addAttribute("tweetForm", tweetForm);
-      return "tweets/new";
-    }
-    return "redirect:/";
+  @GetMapping("/")
+  public List<TweetEntity> showIndex() {
+  List<TweetEntity> tweets = tweetRepository.findAll();
+  return tweets;
   }
-    
-
-
+  
   @PostMapping("/")
   public ResponseEntity<?> createTweet(@RequestBody @Validated(ValidationOrder.class) TweetForm tweetForm,
                             BindingResult result, 
@@ -83,45 +70,27 @@ public class TweetController {
     }
   }
 
-  @PostMapping("/tweets/{tweetId}/delete")
-  public String deleteTweet(@PathVariable("tweetId") Integer tweetId) {
+ @PostMapping("/{tweetId}/delete")
+  public ResponseEntity<?> deleteTweet(@PathVariable("tweetId") Integer tweetId) {
     try {
       tweetRepository.deleteById(tweetId);
+      return ResponseEntity.ok().body("");
     } catch (Exception e) {
-      System.out.println("エラー：" + e);
-      return "redirect:/";
+      System.out.println("エラー: " + e);
+      return ResponseEntity.internalServerError().body(Map.of("messages", List.of("Internal Server Error")));
     }
-    return "redirect:/";
   }
 
-  @GetMapping("/tweets/{tweetId}/edit")
-  public String editTweet(@PathVariable("tweetId") Integer tweetId, Model model) {
-    TweetEntity tweet = tweetRepository.findById(tweetId);
-
-    TweetForm tweetForm = new TweetForm();
-    tweetForm.setText(tweet.getText());
-    tweetForm.setImage(tweet.getImage());
-
-    model.addAttribute("tweetForm", tweetForm);
-    model.addAttribute("tweetId", tweetId);
-    return "tweets/edit";
-  }
-
-  @PostMapping("/tweets/{tweetId}/update")
-  public String updateTweet(@ModelAttribute("tweetForm") @Validated(ValidationOrder.class) TweetForm tweetForm,
+  @PostMapping("/{tweetId}/update")
+  public ResponseEntity<?> updateTweet(@RequestBody @Validated(ValidationOrder.class) TweetForm tweetForm,
                             BindingResult result,
-                            @PathVariable("tweetId") Integer tweetId,
-                            Model model) {
+                            @PathVariable("tweetId") Integer tweetId) {
 
     if (result.hasErrors()) {
       List<String> errorMessages = result.getAllErrors().stream()
               .map(DefaultMessageSourceResolvable::getDefaultMessage)
               .collect(Collectors.toList());
-      model.addAttribute("errorMessages", errorMessages);
-
-      model.addAttribute("tweetForm", tweetForm);
-      model.addAttribute("tweetId", tweetId);
-      return "tweets/edit";
+      return ResponseEntity.badRequest().body(Map.of("messages", errorMessages));
     }
 
     TweetEntity tweet = tweetRepository.findById(tweetId);
@@ -130,22 +99,23 @@ public class TweetController {
 
     try {
       tweetRepository.update(tweet);
+      return ResponseEntity.ok().body(tweet);
     } catch (Exception e) {
-      System.out.println("エラー：" + e);
-      return "redirect:/";
+        System.out.println("エラー：" + e);
+        return ResponseEntity.internalServerError().body(Map.of("messages", List.of("Internal Server Error")));
     }
-
-    return "redirect:/";
   }
 
-  @GetMapping("/tweets/{tweetId}")
-  public String showTweetDetail(@PathVariable("tweetId") Integer tweetId, Model model) {
+  @GetMapping("/{tweetId}")
+  public ResponseEntity<TweetEntity> showTweetDetail(@PathVariable("tweetId") Integer tweetId) {
       TweetEntity tweet = tweetRepository.findById(tweetId);
-      CommentForm commentForm = new CommentForm();
-      model.addAttribute("tweet", tweet);
-      model.addAttribute("commentForm", commentForm);
-      model.addAttribute("comments",tweet.getComments());
-      return "tweets/detail";
+
+      //ツイートが取得できなかった時。notFound()のレスポンスはbodyを含められないので、.build()を指定。
+      if (tweet == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    return ResponseEntity.ok().body(tweet);
   }
 
   @GetMapping("/tweets/search")
